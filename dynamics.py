@@ -15,26 +15,26 @@ def hat(v):
 
 def compute_test_init(num_sample=5):
     initials = []
+    pos_init = np.vstack([10, 10, 5])
+    vel_init = np.vstack([0, 0, 1])
+    quat_init = rot.angle2quat(
+        15*np.pi/180, 15*np.pi/180, 15*np.pi/180
+    )
+    omega_init = np.vstack([0., 0., 0.])
+    tmp = np.vstack([pos_init, vel_init, quat_init, omega_init])
+    initials.append(tmp)
     random.seed(0)
     while True:
+        if len(initials) == num_sample:
+            break
         pos_init = 20 * (np.vstack([2, 2, 1])*random.rand(3, 1) \
             - np.vstack([1, 1, 0]))
         vel_init = 20 * (2*random.rand(3, 1) - 1)
         psi, theta, phi = np.pi * (2*random.rand(3) - 1)
         quat_init = rot.angle2quat(psi, theta, phi)
         omega_init = 10 * (2*random.rand(3, 1) - 1)
-        tmp = np.vstack((pos_init, vel_init, quat_init, omega_init))
+        tmp = np.vstack([pos_init, vel_init, quat_init, omega_init])
         initials.append(tmp)
-        if len(initials) == num_sample-1:
-            pos_init = np.vstack([10, 10, 5])
-            vel_init = np.vstack([0, 0, 1])
-            quat_init = rot.angle2quat(
-                15*np.pi/180, 15*np.pi/180, 15*np.pi/180
-            )
-            omega_init = np.vstack((0., 0., 0.))
-            tmp = np.vstack((pos_init, vel_init, quat_init, omega_init))
-            initials.append(tmp)
-            break
     return initials
 
 
@@ -106,16 +106,6 @@ class Env(BaseEnv, gym.Env):
             high=np.float32(self.quad.thrust_max),
             shape=(4,)
         )
-        # state_bound = np.vstack([
-        #         np.inf, np.inf, np.inf,
-        #         np.inf, np.inf, np.inf,
-        #         1, 1, 1, 1, 1, 1, 1, 1, 1,
-        #         np.inf, np.inf, np.inf
-        #     ])
-        # state_bound = np.vstack([
-        #         1, 1, 1, 1, 1, 1, 1, 1, 1,
-        #         np.inf, np.inf, np.inf
-        #     ])
         state_ubound = np.vstack([
                 np.inf, np.inf, np.inf,
                 np.inf, np.inf, np.inf,
@@ -141,29 +131,29 @@ class Env(BaseEnv, gym.Env):
         omega = self.quad.omega.state
         # C_reshaped = np.reshape(self.quad.C.state, (-1, 1))
         psi, theta, phi = rot.quat2angle(quat)
-        des_pos = np.vstack((0, 0, 10))
+        des_pos = np.vstack([0, 0, 10])
         des_psi = 0
         e_pos = pos - des_pos
-        e_attitude = np.vstack((
+        e_attitude = np.vstack([
             np.cos(phi), np.sin(phi),
             np.cos(theta), np.sin(theta),
             np.cos(psi) - np.cos(des_psi), np.sin(psi) - np.sin(psi)
-        ))
-        x = np.vstack((e_pos, vel, e_attitude, omega))
+        ])
+        x = np.vstack([e_pos, vel, e_attitude, omega])
         obs = np.float32(x)
         return obs
         
-    def reset(self, initial="random"):
-        if initial == "random":
+    def reset(self, initial=np.zeros((13,1))):
+        if not initial.any():
             pos_init = 20 * (np.vstack([2, 2, 1])*random.rand(3, 1) \
                         - np.vstack([1, 1, 0]))
             vel_init = 20 * (2*random.rand(3, 1) - 1)
             psi, theta, phi = np.pi * (2*random.rand(3) - 1)
             quat_init = rot.angle2quat(psi, theta, phi)
             omega_init = 2*np.pi * (2*random.rand(3, 1) - 1)
-            self.quad.initial_state = np.vstack((
+            self.quad.initial_state = np.vstack([
                 pos_init, vel_init, quat_init, omega_init
-            ))
+            ])
         else:
             self.quad.initial_state = initial
         super().reset()
@@ -200,7 +190,7 @@ class Env(BaseEnv, gym.Env):
         return reward
 
     def lyapunov(self, obs):
-        e = np.vstack((obs[0:3], obs[10:12]))
+        e = np.vstack([obs[0:3], obs[10:12]])
         P = np.diag([1, 1, 1, 1, 1])
         V = e.T @ P @ e
         # V = e_att.T @ e_att

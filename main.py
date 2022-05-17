@@ -17,11 +17,11 @@ def config():
             "env": Env,
             "env_config": {
                 "dt": 0.01,
-                "max_t": 5.,
+                "max_t": 1.,
                 "solver": "rk4"
             },
             "num_gpus": 0,
-            "num_workers": 4,
+            "num_workers": 2,
             # "num_envs_per_worker": 50,
             "lr": 0.0001,
             "gamma": 0.9,
@@ -102,7 +102,7 @@ def validate(parent_path):
     ray.get(futures)
 
 
-@ray.remote(num_cpus=6)
+# @ray.remote(num_cpus=6)
 def sim(initial, checkpoint_path, env_config, num=0):
     # env = Env(env_config)
     # agent = ppo.PPOTrainer(env=Env, config={"explore": False})
@@ -158,7 +158,8 @@ def main():
     ## Only to validate
     # parent_path = 
 
-    validate(parent_path)
+    # validate(parent_path)
+    ray_debug(parent_path)
     ray.shutdown()
 
 
@@ -186,6 +187,21 @@ def plot_debug(parent_path):
     data_path = Path(parent_path, f"test_{1}", "env_data.h5")
     plot_path = Path(parent_path, f"test_{1}")
     plot_validation(plot_path, data_path)
+
+def ray_debug(parent_path):
+    _, info = fym.logging.load(
+        Path(parent_path, 'checkpoint_paths.h5'),
+        with_info=True
+    )
+    checkpoint_paths = info['checkpoint_paths']
+    initials = compute_test_init()
+    env_config = fym.config.load("config.env_config", as_dict=True)
+    print("Validating...")
+    sim(initials[0], checkpoint_paths[0][0], env_config, num=1)
+    # futures = [sim.remote(initial, path[0], env_config, num=i)
+    #            for i, initial in enumerate(initials)
+    #            for path in checkpoint_paths]
+    # ray.get(futures)
 
 
 if __name__ == "__main__":
