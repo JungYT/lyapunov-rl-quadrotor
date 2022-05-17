@@ -47,7 +47,7 @@ def plot_validation(dir_save, data_path):
     euler = np.array(
         [np.array(rot.quat2angle(x))[::-1] for x in quat]
     )*180/np.pi
-    lyapunov = env_data['lyapunov'].squeeze()
+    lyapunov = env_data['lyapunov']
 
     # fig, ax = plt.subplots(1, 1, figsize=set_size())
     # ax.plot(pos[:,0], pos[:,1], 'r', label='Traj.')

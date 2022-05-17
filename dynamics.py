@@ -21,7 +21,10 @@ def compute_test_init(num_sample=5):
         15*np.pi/180, 15*np.pi/180, 15*np.pi/180
     )
     omega_init = np.vstack([0., 0., 0.])
-    tmp = np.vstack([pos_init, vel_init, quat_init, omega_init])
+    # tmp = np.concatenate(
+    #     (pos_init, vel_init, quat_init, omega_init), axis=None
+    # ).reshape((-1, 1))
+    tmp = np.vstack((pos_init, vel_init, quat_init, omega_init))
     initials.append(tmp)
     random.seed(0)
     while True:
@@ -33,6 +36,9 @@ def compute_test_init(num_sample=5):
         psi, theta, phi = np.pi * (2*random.rand(3) - 1)
         quat_init = rot.angle2quat(psi, theta, phi)
         omega_init = 10 * (2*random.rand(3, 1) - 1)
+        # tmp = np.concatenate(
+        #     (pos_init, vel_init, quat_init, omega_init), axis=None
+        # ).reshape((-1, 1))
         tmp = np.vstack([pos_init, vel_init, quat_init, omega_init])
         initials.append(tmp)
     return initials
@@ -46,7 +52,7 @@ class Quadrotor(BaseEnv):
         self.quat = BaseSystem(shape=(4,1))
         self.omega = BaseSystem(shape=(3,1))
 
-        self.e3 = np.vstack((0., 0., 1.))
+        self.e3 = np.vstack([0., 0., 1.])
         self.g = -9.81 * self.e3
         self.m = 4.34
         self.J = np.diag([0.0820, 0.0845, 0.1377])
@@ -129,7 +135,6 @@ class Env(BaseEnv, gym.Env):
         vel = self.quad.vel.state
         quat = self.quad.quat.state
         omega = self.quad.omega.state
-        # C_reshaped = np.reshape(self.quad.C.state, (-1, 1))
         psi, theta, phi = rot.quat2angle(quat)
         des_pos = np.vstack([0, 0, 10])
         des_psi = 0
@@ -139,7 +144,7 @@ class Env(BaseEnv, gym.Env):
             np.cos(theta), np.sin(theta),
             np.cos(psi) - np.cos(des_psi), np.sin(psi) - np.sin(psi)
         ])
-        x = np.vstack([e_pos, vel, e_attitude, omega])
+        x = np.vstack((e_pos, vel, e_attitude, omega))
         obs = np.float32(x)
         return obs
         
@@ -163,7 +168,7 @@ class Env(BaseEnv, gym.Env):
     def set_dot(self, t, u):
         self.quad.set_dot(u)
         obs = self.observe()
-        V = self.lyapunov(obs)
+        V, _ = self.lyapunov(obs)
         return dict(t=t, **self.observe_dict(), thrust=u, obs=obs, lyapunov=V)
 
     def step(self, action):
@@ -193,6 +198,5 @@ class Env(BaseEnv, gym.Env):
         e = np.vstack([obs[0:3], obs[10:12]])
         P = np.diag([1, 1, 1, 1, 1])
         V = e.T @ P @ e
-        # V = e_att.T @ e_att
-        return V, e
+        return V.item(), e
 
