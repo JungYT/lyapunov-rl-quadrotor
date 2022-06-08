@@ -1,6 +1,8 @@
 import numpy as np
 import numpy.random as random
+from numpy.linalg import norm
 import gym
+from gym import spaces
 from fym.core import BaseEnv, BaseSystem
 import fym.utils.rot as rot
 
@@ -107,46 +109,47 @@ class Env(BaseEnv, gym.Env):
         super().__init__(**env_config)
         self.quad = Quadrotor()
 
-        self.action_space = gym.spaces.Box(
-            low=np.float32(0.),
-            high=np.float32(self.quad.thrust_max),
-            shape=(4,)
+        self.observation_space = spaces.Box(-np.inf, np.inf, shape=(15,))
+        self.action_space = spaces.Box(
+            low=0,
+            high=self.quad.thrust_max,
+            shape=(4,),
+            dtype=np.float32,
         )
-        state_ubound = np.vstack([
-                np.inf, np.inf, np.inf,
-                np.inf, np.inf, np.inf,
-                1., 1., 1., 1., 0., 0.,
-                np.inf, np.inf, np.inf
-            ])
-        state_lbound = np.vstack([
-                -np.inf, -np.inf, -np.inf,
-                -np.inf, -np.inf, -np.inf,
-                -1., -1., -1., -1., -2., -2.,
-                -np.inf, -np.inf, -np.inf
-            ])
-        self.observation_space = gym.spaces.Box(
-            low=np.float32(state_lbound),
-            high=np.float32(state_ubound),
-            shape=(15,1)
+        self.state_space = spaces.Box(
+            low = np.hstack(
+                [
+                    [-10, -10, 0],
+                    [-20, -20, -20],
+                    np.deg2rad([-80, -80, -360]),
+                    [-50, -50, -50],
+                ]
+            ),
+            high = np.hstack(
+                [
+                    [10, 10, 20],
+                    [20, 20, 20],
+                    np.deg2rad([80, 80, 360]),
+                    [50, 50, 50],
+                ]
+            ),
         )
 
     def observe(self):
-        pos = self.quad.pos.state
-        vel = self.quad.vel.state
-        quat = self.quad.quat.state
-        omega = self.quad.omega.state
-        psi, theta, phi = rot.quat2angle(quat)
+        pos, vel, quat, omega = self.quad.observe_list()
         des_pos = np.vstack([0, 0, 10])
-        des_psi = 0
         e_pos = pos - des_pos
-        e_attitude = np.vstack([
-            np.cos(phi), np.sin(phi),
-            np.cos(theta), np.sin(theta),
-            np.cos(psi) - np.cos(des_psi), np.sin(psi) - np.sin(psi)
-        ])
-        x = np.vstack((e_pos, vel, e_attitude, omega))
-        obs = np.float32(x)
-        return obs
+        psi, theta, phi = rot.quat2angle(quat)
+        euler = np.array([phi, theta, psi])
+        # des_psi = 0
+        # e_attitude = np.vstack([
+        #     np.cos(phi), np.sin(phi),
+        #     np.cos(theta), np.sin(theta),
+        #     np.cos(psi) - np.cos(des_psi), np.sin(psi) - np.sin(psi)
+        # ])
+        # x = np.vstack((e_pos, vel, e_attitude, omega))
+        obs = np.hstack((e_pos.ravel(), vel.ravel(), euler, omega.ravel()))
+        return np.float32(obs)
         
     def reset(self, initial=np.zeros((13,1))):
         if not initial.any():
@@ -199,4 +202,5 @@ class Env(BaseEnv, gym.Env):
         P = np.diag([1, 1, 1, 1, 1])
         V = e.T @ P @ e
         return V.item(), e
+
 

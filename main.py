@@ -38,7 +38,7 @@ def config():
             # },
         },
         "stop": {
-            "training_iteration": 10000,
+            "training_iteration": 2000,
         },
         "local_dir": "./ray_results",
         "checkpoint_freq": 1000,
